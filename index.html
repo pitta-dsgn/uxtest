@@ -265,11 +265,12 @@ const pharmacies=[
 const initial=()=>({quantities:{para:1,sinus:1,thera:1},mode:null,payment:'pickup',promo:false,orders:null,chosen:false});
 let state=initial();
 try{const saved=JSON.parse(sessionStorage.getItem('april-uxtest-v1'));if(saved&&saved.quantities)state={...state,...saved};}catch{}
-const ui={route:'cart',query:'',selected:false,expanded:false,collapsed:false,favorites:false,saved:new Set(),openRows:new Set(),removed:{},zoom:1};
+const ui={route:'cart',query:'',selected:false,selectedId:'sun',expanded:false,collapsed:false,favorites:false,saved:new Set(),openRows:new Set(),removed:{},zoom:1};
 const app=document.getElementById('app');
 let liveMap=null;
 let mapMountId=0;
 let markerLayer=null;
+let focusSelectedMarker=false;
 const mapView={center:[44.578,38.065],zoom:13};
 const money=v=>new Intl.NumberFormat('ru-RU').format(v)+' ₽';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -318,7 +319,22 @@ async function mountLiveMap(){
   tiles.addTo(liveMap);
   markerLayer=L.layerGroup().addTo(liveMap);refreshMapMarkers();
   liveMap.on('moveend zoomend',()=>{if(!liveMap)return;const c=liveMap.getCenter();mapView.center=[c.lat,c.lng];mapView.zoom=liveMap.getZoom();refreshMapMarkers();});
+  if(focusSelectedMarker){focusSelectedMarker=false;focusPharmacyMarker();}
  }catch(error){if(mountId===mapMountId&&loading){loading.hidden=false;loading.textContent='Карта недоступна. Аптеку можно выбрать из списка';}}
+}
+function selectPharmacy(id='sun'){
+ const p=pharmacies.find(p=>p.id===id);if(!p)return;
+ ui.selected=true;ui.selectedId=id;ui.collapsed=false;ui.expanded=false;
+ focusSelectedMarker=true;document.activeElement?.blur();render();
+}
+function focusPharmacyMarker(){
+ if(!liveMap||!ui.selected)return;
+ const p=pharmacies.find(p=>p.id===ui.selectedId)||pharmacies[0],zoom=16;
+ const sheet=document.querySelector('.sheet.selected'),height=sheet?.getBoundingClientRect?.().height||320;
+ // Center the pin in the visible map area above the selected pharmacy panel.
+ const point=liveMap.project([p.lat,p.lng],zoom);
+ const center=liveMap.unproject([point.x,point.y+Math.max(0,(height-112)/2)],zoom);
+ liveMap.flyTo(center,zoom,{duration:.7});
 }
 function stockInfo(p){
  const ids=new Set(entries().map(item=>item.id));
@@ -334,15 +350,15 @@ function clusterPharmacies(items,project,zoom){
 function refreshMapMarkers(){
  if(!liveMap||!markerLayer)return;
  const L=window.L;markerLayer.clearLayers();
- const groups=clusterPharmacies(filteredPharmacies(),p=>liveMap.project([p.lat,p.lng],liveMap.getZoom()),liveMap.getZoom());
+ const markerPharmacies=ui.selected?pharmacies:filteredPharmacies();
+ const groups=clusterPharmacies(markerPharmacies,p=>liveMap.project([p.lat,p.lng],liveMap.getZoom()),liveMap.getZoom());
  for(const group of groups){
   const multiple=group.length>1,p=group[0],center=multiple?[group.reduce((n,p)=>n+p.lat,0)/group.length,group.reduce((n,p)=>n+p.lng,0)/group.length]:[p.lat,p.lng];
   const info=stockInfo(p),label=multiple?`${group.length} аптек`:p.address+' — '+info.status;
   const icon=L.divIcon({className:multiple?'pharmacy-cluster':'pharmacy-marker '+info.color,html:multiple?`<span>${group.length}</span>`:'<span class="marker-dot"></span>',iconSize:multiple?[44,44]:[28,36],iconAnchor:multiple?[22,22]:[14,36]});
   L.marker(center,{icon,title:label,alt:label,keyboard:true}).addTo(markerLayer).on('click',()=>{
    if(multiple){liveMap.setView(center,Math.min(18,liveMap.getZoom()+2));return;}
-   if(p.id==='sun'){ui.selected=true;document.activeElement?.blur();render();}
-   else{ui.query='';ui.favorites=false;ui.selected=false;ui.collapsed=false;ui.expanded=true;render();const row=document.getElementById('pharmacy-row-'+p.id);row?.scrollIntoView?.({block:'start',behavior:'smooth'});row?.classList.add('highlighted');}
+   selectPharmacy(p.id);
   });
  }
 }
@@ -364,7 +380,7 @@ function pharmacyRow(p){return `<article class="pharmacy-row" id="pharmacy-row-$
 function normalize(s){return s.toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[^а-яa-z0-9]+/g,' ').trim();}
 function filteredPharmacies(){const tokens=normalize(ui.query).split(' ').filter(Boolean);return pharmacies.filter(p=>(!ui.favorites||ui.saved.has(p.id))&&tokens.every(t=>normalize(p.address).includes(t)));}
 function listHtml(){const list=filteredPharmacies();return list.length?list.map(pharmacyRow).join(''):`<div class="no-results"><h2>${ui.favorites&&!ui.query?'Нет избранных аптек':'Аптеки не найдены'}</h2><p style="margin-top:8px">${ui.favorites&&!ui.query?'Добавьте аптеку в избранное с помощью закладки':'Проверьте адрес или измените запрос'}</p>${ui.favorites?button('Показать все аптеки','all-pharmacies','secondary-button'):''}</div>`;}
-function map(){const p=pharmacies[0];app.innerHTML=`<section class="map-screen" aria-label="Выбор аптеки"><div id="live-map" class="live-map" aria-label="Интерактивная карта Геленджика"></div><div id="map-loading" class="map-loading" role="status">Загрузка карты…</div><a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a><button class="icon-button map-back" data-action="${ui.selected?'back-list':'cart'}" aria-label="Назад">${image('back')}</button><div class="map-controls"><button data-action="zoom-in" aria-label="Увеличить карту">+</button><button data-action="zoom-out" aria-label="Уменьшить карту">−</button></div><section class="sheet ${ui.selected?'selected':ui.collapsed?'collapsed':ui.expanded?'expanded':''}"><button class="handle" data-action="toggle-sheet" aria-label="${ui.collapsed?'Развернуть':'Изменить высоту'} список"><span></span></button>${ui.selected?`<div class="sheet-body"><div class="address-row"><div><h2>${p.address}</h2><p class="pharmacy-meta">${p.hours} · ${p.distance}</p></div><button class="bookmark ${ui.saved.has('sun')?'saved':''}" data-action="bookmark" data-id="sun" aria-label="Добавить аптеку в избранное">${image('bookmark')}</button></div>${availability(p,false)}${miniList(p)}</div>${button('Выбрать аптеку','choose-pharmacy')}`:`<div class="search-row"><button class="icon-button pale ${ui.favorites?'blue':''}" data-action="toggle-favorites" aria-label="Избранные аптеки" aria-pressed="${ui.favorites}">▯</button><label class="search-field">${image('catalog')}<input id="pharmacy-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Поиск по улице или адресу" aria-label="Поиск аптеки по улице или адресу" value="${esc(ui.query)}"></label></div><div class="sheet-body" id="pharmacy-results">${listHtml()}</div>`}</section></section>`;document.getElementById('phone').classList.add('map-active');applySheetHeight();mountLiveMap();}
+function map(){const p=pharmacies.find(p=>p.id===ui.selectedId)||pharmacies[0];app.innerHTML=`<section class="map-screen" aria-label="Выбор аптеки"><div id="live-map" class="live-map" aria-label="Интерактивная карта Геленджика"></div><div id="map-loading" class="map-loading" role="status">Загрузка карты…</div><a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a><button class="icon-button map-back" data-action="${ui.selected?'back-list':'cart'}" aria-label="Назад">${image('back')}</button><div class="map-controls"><button data-action="zoom-in" aria-label="Увеличить карту">+</button><button data-action="zoom-out" aria-label="Уменьшить карту">−</button></div><section class="sheet ${ui.selected?'selected':ui.collapsed?'collapsed':ui.expanded?'expanded':''}"><button class="handle" data-action="toggle-sheet" aria-label="${ui.collapsed?'Развернуть':'Изменить высоту'} список"><span></span></button>${ui.selected?`<div class="sheet-body"><div class="address-row"><div><h2>${p.address}</h2><p class="pharmacy-meta">${p.hours} · ${p.distance}</p></div><button class="bookmark ${ui.saved.has(p.id)?'saved':''}" data-action="bookmark" data-id="${p.id}" aria-label="Добавить аптеку в избранное">${image('bookmark')}</button></div>${availability(p,false)}${stockInfo(p).color!=='green'?miniList(p):''}</div>${button('Выбрать аптеку','choose-pharmacy','',p.id!=='sun'?'disabled':'')}`:`<div class="search-row"><button class="icon-button pale ${ui.favorites?'blue':''}" data-action="toggle-favorites" aria-label="Избранные аптеки" aria-pressed="${ui.favorites}">▯</button><label class="search-field">${image('catalog')}<input id="pharmacy-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Поиск по улице или адресу" aria-label="Поиск аптеки по улице или адресу" value="${esc(ui.query)}"></label></div><div class="sheet-body" id="pharmacy-results">${listHtml()}</div>`}</section></section>`;document.getElementById('phone').classList.add('map-active');applySheetHeight();mountLiveMap();}
 function checkoutProduct(p){return `<article class="checkout-product"><div class="mini-image">${image(p.id)}</div><div><p class="name">${esc(p.name)}</p><p class="amount">${money(p.price*p.qty)}</p></div><span class="quantity-small">×${p.qty}</span></article>`;}
 function orderGroups(){const active=entries(),stock=active.filter(p=>p.id!=='sinus'),preorder=active.filter(p=>p.id==='sinus');if(state.mode==='split')return[{title:`Заказ 1 · <span class="green">В наличии · ${count(stock)}</span>`,items:stock},{title:`Заказ 2 · <span class="orange">Под заказ · ${count(preorder)}</span>`,items:preorder}].filter(g=>g.items.length);if(state.mode==='stock')return[{title:`Товары · ${count(stock)}`,items:stock}];return[{title:`Товары · ${count(active)}`,items:active}];}
 function chosenProducts(){return state.mode==='stock'?entries().filter(p=>p.id!=='sinus'):entries();}
@@ -382,9 +398,9 @@ document.addEventListener('input',e=>{if(e.target.id!=='pharmacy-search')return;
 document.addEventListener('focusin',e=>{if(e.target.id==='pharmacy-search'){ui.expanded=true;ui.collapsed=false;e.target.closest('.sheet').classList.add('expanded');e.target.closest('.sheet').classList.remove('collapsed');applySheetHeight();}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const a=b.dataset.action,id=b.dataset.id;if(a==='close-dialog'&&e.target.closest('.dialog')&&b.classList.contains('dialog-backdrop'))return;
 if(a==='cart')navigate('cart');else if(a==='start-map'){ui.selected=false;ui.query='';ui.expanded=false;ui.collapsed=false;navigate('pharmacies');}
-else if(a==='select-pharmacy'){ui.selected=true;document.activeElement?.blur();render();}
-else if(a==='back-list'){ui.selected=false;render();}else if(a==='back-map'||a==='change-pharmacy'){ui.selected=true;navigate('pharmacies');}
-else if(a==='choose-pharmacy'){state.chosen=true;navigate('checkout');}
+else if(a==='select-pharmacy'){selectPharmacy(id||'sun');}
+else if(a==='back-list'){ui.selected=false;render();}else if(a==='back-map'||a==='change-pharmacy'){ui.selected=true;ui.selectedId='sun';focusSelectedMarker=true;navigate('pharmacies');}
+else if(a==='choose-pharmacy'){if(ui.selectedId!=='sun')return;state.chosen=true;navigate('checkout');}
 else if(a==='expand-sheet'){ui.expanded=true;ui.collapsed=false;render();}else if(a==='toggle-sheet'){if(ui.selected){ui.selected=false;ui.expanded=true;ui.collapsed=false;}else if(ui.collapsed){ui.collapsed=false;ui.expanded=false;}else if(ui.expanded){ui.expanded=false;ui.collapsed=true;}else{ui.expanded=true;}render();}
 else if(a==='expand-row'){ui.openRows.has(id)?ui.openRows.delete(id):ui.openRows.add(id);const results=document.getElementById('pharmacy-results'),top=results.scrollTop;results.innerHTML=listHtml();results.scrollTop=top;ui.collapsed=false;ui.expanded=true;applySheetHeight();}
 else if(a==='bookmark'){ui.saved.has(id)?ui.saved.delete(id):ui.saved.add(id);render();}
