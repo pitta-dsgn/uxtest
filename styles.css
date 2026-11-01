@@ -166,3 +166,7 @@ body,button,input { letter-spacing:0; }
 .related-row .product-image img.linaqua { width:64px; height:auto; }
 .offer .product-image img.energy { width:51.2px; height:64px; }
 .offer .product-image img.flu { width:65px; height:64px; }
+
+/* Use the native aspect ratios of the updated Website_Assets originals. */
+.offer .product-image img.energy { width:64px; height:64px; }
+.offer .product-image img.flu { width:65px; height:auto; }
