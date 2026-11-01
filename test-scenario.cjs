@@ -43,9 +43,9 @@ assert(mapCalls.length>0);assert(mapCalls.slice(0,-1).every(c=>c.map.removed));c
 
 click('reset');
 assert.equal(run('pharmacies.length'),28);
-assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='green').length"),27);
-assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='orange').length"),1);
-assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='red').length"),0);
+assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='green').length"),19);
+assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='orange').length"),8);
+assert.equal(run("pharmacies.filter(p=>stockInfo(p).color==='red').length"),1);
 assert.equal(run("stockInfo(pharmacies[0]).preorder.join(',')"),'sinus');
 assert(run("pharmacies.every(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng))"));
 assert.equal(run("clusterPharmacies(pharmacies,()=>({x:0,y:0}),13)[0].length"),28);
@@ -56,11 +56,11 @@ click('toggle-sheet');assert.equal(run('ui.expanded'),true);
 click('toggle-sheet');assert.equal(run('ui.collapsed'),true);
 click('toggle-sheet');assert.equal(run('ui.collapsed'),false);assert.equal(run('ui.expanded'),false);
 const stops=run('sheetStops()');assert(stops[0]<stops[1]&&stops[1]<stops[2]);
-console.log('PASS: 28 real locations; latest stock: Sun preorder, other 27 available; clustering preserves counts and separates at maximum zoom; three panel stops.');
+console.log('PASS: 28 real locations; stock distribution: 19 available, 8 preorder, 1 unavailable; clustering preserves counts and separates at maximum zoom; three panel stops.');
 
 click('select-pharmacy');assert.equal(mapCalls.at(-1).map.zoom,16);assert(!elements.app.innerHTML.includes('id="pharmacy-search"'));assert(elements.app.innerHTML.includes('Выбрать аптеку'));assert.equal(run('ui.selectedId'),'sun');
 run("pharmacies.find(p=>p.id==='hospital').missing=['sinus'];selectPharmacy('hospital')");assert(elements.app.innerHTML.includes('пер. Больничный'));assert(elements.app.innerHTML.includes('Временно отсутствует'));assert(!elements.app.innerHTML.includes('id="pharmacy-search"'));assert.equal(mapCalls.at(-1).map.zoom,16);click('choose-pharmacy');assert.equal(run('ui.route'),'pharmacies');
-run("pharmacies.find(p=>p.id==='hospital').missing=[]");click('back-list');assert(elements.app.innerHTML.includes('id="pharmacy-search"'));
+run("pharmacies.find(p=>p.id==='hospital').missing=['sinus']");click('back-list');assert(elements.app.innerHTML.includes('id="pharmacy-search"'));
 console.log('PASS: selected pharmacy pin focus; correct address/stock panel; hidden search; return to list; Sun-only checkout.');
 
 const screenshotAddresses=JSON.parse(fs.readFileSync(__dirname+'/screenshot-addresses.json','utf8')).addresses;
@@ -83,3 +83,22 @@ assert(elements.app.innerHTML.includes('images/banner_after_order.png'));assert(
 assert(elements.app.innerHTML.includes('images/icon_order_success.svg'));assert(!elements.app.innerHTML.includes('class="badge"'));assert.equal(run('count(entries())'),0);
 for(const timer of run('Object.values(ui.removed)'))clearTimeout(timer);
 console.log('PASS: no crossed-out total, persistent favorite state, in-place stock disclosure, selected pharmacy without disclosure, new images and confirmation menu.');
+
+click('reset');click('start-map');
+assert.equal(run("pharmacies.filter(p=>p.preorder.length>0).length"),8);
+assert.equal(run("pharmacies.filter(p=>p.missing.length>0).length"),1);
+assert(run("pharmacies.filter(p=>p.preorder.length>0).every(p=>p.preorder.length===1||p.preorder.length===2)"));
+assert(run("pharmacies.every(p=>p.missing.length<=1)"));
+assert.equal(run("pharmacies.find(p=>p.id==='sun').preorder.join(',')"),'sinus');
+assert(run("pharmacies.every(p=>p.distance&&Number.isFinite(p.distanceMeters))"));
+assert.equal(run("Math.round(distanceMeters(USER_LOCATION,USER_LOCATION))"),0);
+assert(run("filteredPharmacies().every((p,i,all)=>i===0||p.distanceMeters>=all[i-1].distanceMeters)"));
+assert(run("pharmacies[0].distanceMeters>200&&pharmacies[0].distanceMeters<500"));
+const point=run('USER_LOCATION');
+assert(markers.some(m=>m.options.icon.className==='user-location-marker'&&m.center[0]===point.lat&&m.center[1]===point.lng));
+for(const m of markers){if(m.options.icon.className==='pharmacy-cluster')assert(run(`pharmacies.some(p=>p.lat===${m.center[0]}&&p.lng===${m.center[1]})`),'cluster center must be an actual pharmacy');}
+run("ui.query='';ui.saved=new Set();ui.favorites=true;render()");assert(elements.app.innerHTML.includes('favorite-filter is-active'));assert(elements.app.innerHTML.includes('empty-favorites'));assert(elements.app.innerHTML.includes('Сохраните аптеку с помощью закладки рядом с её адресом'));
+click('all-pharmacies');assert(!run('ui.favorites'));
+click('bookmark','sun');click('toggle-favorites');assert.equal(run('filteredPharmacies().length'),1);assert.equal(run('filteredPharmacies()[0].id'),'sun');
+click('locate');assert.equal(mapCalls.at(-1).map.center[0],point.lat);assert.equal(mapCalls.at(-1).map.center[1],point.lng);
+console.log('PASS: clusters anchored on pharmacy coordinates, fixed user-location pin, Haversine distances, nearest-first ordering, 8 preorder/1 unavailable, selected favorite filter and empty-state copy.');

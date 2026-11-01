@@ -117,3 +117,16 @@ body,button,input { letter-spacing:0; }
  .option { padding:12px; }
  .summary-action>.button { font-size:16px; }
 }
+
+/* Pharmacy filter, reference location and stable cluster positioning. */
+.favorite-filter { background:var(--bg); width:44px; height:48px; padding:0; color:var(--muted); border-radius:12px; }
+.favorite-filter-icon { display:block; width:16px; height:20px; background:currentColor; mask:url('images/icon_bookmark_outline.svg') center / 31px 25px no-repeat; -webkit-mask:url('images/icon_bookmark_outline.svg') center / 31px 25px no-repeat; }
+.favorite-filter.is-active { background:var(--primary); color:var(--bg); }
+.favorite-filter.is-active .favorite-filter-icon { mask-image:url('images/icon_bookmark_filled.svg'); -webkit-mask-image:url('images/icon_bookmark_filled.svg'); }
+.no-results { padding:24px 0 20px; text-align:left; color:var(--ink); display:flex; flex-direction:column; gap:16px; width:100%; }
+.empty-copy { display:flex; flex-direction:column; gap:12px; width:100%; }
+.no-results h2 { font-size:18px; line-height:24px; font-weight:600; }
+.no-results p { margin:0; font-size:16px; line-height:24px; color:var(--muted); }
+.no-results .button { min-height:44px; }
+.user-location-marker { background:none; border:0; display:flex; align-items:center; justify-content:center; }
+.user-location-marker span { display:block; width:18px; height:18px; border-radius:50%; background:#2196f3; border:3px solid white; box-shadow:0 0 0 5px #2196f326,0 1px 5px #0003; }

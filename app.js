@@ -316,8 +316,22 @@ const pharmacies=[
   ]
  }
 ];
-for(const pharmacy of pharmacies){pharmacy.preorder=pharmacy.id==='sun'?['sinus']:[];pharmacy.missing=[];}
-pharmacies[0].hours='Ежедневно 08:00–20:00';pharmacies[0].distance='952 м';
+// Stable test inventory: 8/28 preorder pharmacies, 1/28 unavailable pharmacy.
+const preorderIndexes=new Set([0,4,7,10,14,18,23,26]);
+let preorderNumber=0;
+for(const [index,pharmacy] of pharmacies.entries()){
+ pharmacy.preorder=preorderIndexes.has(index)?(++preorderNumber%2?['sinus']:['para','thera']):[];
+ pharmacy.missing=index===1?['sinus']:[];
+}
+const USER_LOCATION=Object.freeze({address:'г. Геленджик, ул. Солнцедарская, 8',lat:44.598501,lng:38.030582});
+function distanceMeters(a,b){
+ const radians=d=>d*Math.PI/180,lat=radians(b.lat-a.lat),lng=radians(b.lng-a.lng);
+ const h=Math.sin(lat/2)**2+Math.cos(radians(a.lat))*Math.cos(radians(b.lat))*Math.sin(lng/2)**2;
+ return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+function distanceLabel(meters){return meters<1000?Math.max(10,Math.round(meters/10)*10)+' м':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(meters/1000)+' км';}
+for(const pharmacy of pharmacies){pharmacy.distanceMeters=distanceMeters(USER_LOCATION,pharmacy);pharmacy.distance=distanceLabel(pharmacy.distanceMeters);}
+pharmacies[0].hours='Ежедневно 08:00–20:00';
 const initial=()=>({favorites:[],quantities:{para:1,sinus:1,thera:1},mode:null,payment:'pickup',promo:false,orders:null,chosen:false});
 let state=initial();
 try{const saved=JSON.parse(sessionStorage.getItem('april-uxtest-v2'));if(saved&&saved.quantities)state={...state,...saved};}catch{}
@@ -327,7 +341,7 @@ let liveMap=null;
 let mapMountId=0;
 let markerLayer=null;
 let focusSelectedMarker=false;
-const mapView={center:[44.578,38.065],zoom:13};
+const mapView={center:[USER_LOCATION.lat,USER_LOCATION.lng],zoom:13};
 const money=v=>new Intl.NumberFormat('ru-RU').format(v)+' ₽';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ASSETS={"para": "product_paracetamol.png", "sinus": "product_sinusefrin.png", "thera": "product_theraflu.png", "linaqua": "product_linaqua.png", "energy": "product_energy_sol.png", "flu": "product_flufight.png", "catalog": "navigation_catalog.svg", "offers": "navigation_offers.svg", "home": "icon_home.svg", "cart": "icon_cart.svg", "profile": "icon_profile.svg", "heart": "icon_heart_outline.svg", "heart-filled": "icon_heart_filled.svg", "heart-disabled": "icon_heart_disabled.svg", "trash": "icon_delete.svg", "back": "icon_back_button.svg", "chevron": "icon_chevron_down.svg", "chevron-up": "icon_chevron_up.svg", "chevron-right": "icon_chevron_right.svg", "search": "icon_search_icon.svg", "info": "icon_info.svg", "bookmark": "icon_bookmark_outline.svg", "bookmark-filled": "icon_bookmark_filled.svg", "location": "icon_location_icon.svg", "plus": "icon_plus.svg", "minus": "icon_minus.svg", "zoom-in": "icon_zoom_in_button.svg", "zoom-out": "icon_zoom_out_button.svg", "success": "icon_order_success.svg", "close": "icon_close_icon.svg", "clear": "icon_clear_button.svg", "radio": "icon_radio_unselected.svg", "radio-selected": "icon_radio_selected.svg", "radio-disabled": "icon_radio_disabled.svg", "marker-green": "marker_available.svg", "marker-orange": "marker_on_order.svg", "marker-red": "marker_unavailable.svg", "marker-selected-green": "marker_selected_available.svg", "marker-selected-orange": "marker_selected_on_order.svg", "marker-selected-red": "marker_selected_unavailable.svg", "cluster": "map_cluster.svg"};
@@ -374,7 +388,9 @@ async function mountLiveMap(){
   tiles.on('tileload',()=>{if(mountId===mapMountId)loading.hidden=true;});
   tiles.on('tileerror',()=>{if(mountId===mapMountId){loading.hidden=false;loading.textContent='Не удалось загрузить карту. Проверьте подключение к интернету';}});
   tiles.addTo(liveMap);
-  markerLayer=L.layerGroup().addTo(liveMap);refreshMapMarkers();
+  markerLayer=L.layerGroup().addTo(liveMap);
+  L.marker([USER_LOCATION.lat,USER_LOCATION.lng],{icon:L.divIcon({className:'user-location-marker',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),title:'Вы здесь · Солнцедарская, 8',alt:'Ваше местоположение: Солнцедарская, 8',interactive:false,keyboard:false,zIndexOffset:1000}).addTo(liveMap);
+  refreshMapMarkers();
   liveMap.on('moveend zoomend',()=>{if(!liveMap)return;const c=liveMap.getCenter();mapView.center=[c.lat,c.lng];mapView.zoom=liveMap.getZoom();refreshMapMarkers();});
   if(focusSelectedMarker){focusSelectedMarker=false;focusPharmacyMarker();}
  }catch(error){if(mountId===mapMountId&&loading){loading.hidden=false;loading.textContent='Карта недоступна. Аптеку можно выбрать из списка';}}
@@ -404,13 +420,21 @@ function clusterPharmacies(items,project,zoom){
  for(const p of items){const point=project(p),group=zoom<18&&groups.find(g=>g.points.every(q=>Math.hypot(point.x-q.x,point.y-q.y)<56));if(group){group.items.push(p);group.points.push(point);}else groups.push({items:[p],points:[point]});}
  return groups.map(g=>g.items);
 }
+// A cluster is anchored on a member pharmacy, never the bay's geometric center.
+function clusterAnchor(group,project){
+ const points=group.map(p=>({pharmacy:p,point:project(p)}));
+ return points.reduce((best,p)=>{
+  const cost=points.reduce((sum,q)=>sum+(p.point.x-q.point.x)**2+(p.point.y-q.point.y)**2,0);
+  return !best||cost<best.cost?{pharmacy:p.pharmacy,cost}:best;
+ },null).pharmacy;
+}
 function refreshMapMarkers(){
  if(!liveMap||!markerLayer)return;
  const L=window.L;markerLayer.clearLayers();
  const markerPharmacies=ui.selected?pharmacies:filteredPharmacies();
  const groups=clusterPharmacies(markerPharmacies,p=>liveMap.project([p.lat,p.lng],liveMap.getZoom()),liveMap.getZoom());
  for(const group of groups){
-  const multiple=group.length>1,p=group[0],center=multiple?[group.reduce((n,p)=>n+p.lat,0)/group.length,group.reduce((n,p)=>n+p.lng,0)/group.length]:[p.lat,p.lng];
+  const multiple=group.length>1,p=multiple?clusterAnchor(group,p=>liveMap.project([p.lat,p.lng],liveMap.getZoom())):group[0],center=[p.lat,p.lng];
   const info=stockInfo(p),label=multiple?`${group.length} аптек`:p.address+' — '+info.status;
   const selected=!multiple&&ui.selected&&p.id===ui.selectedId;const icon=multiple?L.divIcon({className:'pharmacy-cluster',html:`${image('cluster')}<span>${group.length}</span>`,iconSize:[48,48],iconAnchor:[24,24]}):L.icon({className:'pharmacy-marker',iconUrl:'images/'+ASSETS[(selected?'marker-selected-':'marker-')+info.color],iconSize:selected?[36,46]:[28,36],iconAnchor:selected?[18,46]:[14,36]});
   L.marker(center,{icon,title:label,alt:label,keyboard:true}).addTo(markerLayer).on('click',()=>{
@@ -433,11 +457,11 @@ function applySheetHeight(){const sheet=document.querySelector('.sheet');if(!she
 function miniProduct(p,status){const cls=status==='Под заказ'?'preorder':status==='Временно отсутствует'?'missing':'';return `<article class="mini-product ${cls}"><div class="mini-image">${image(p.id)}</div><div class="mini-details"><p class="mini-name">${esc(p.name)}</p><p class="mini-status ${status==='Под заказ'?'orange':status==='Временно отсутствует'?'red':'green'}">${status}</p></div><span class="mini-qty">×${p.qty}</span></article>`;}
 function miniList(pharmacy){return `<div class="mini-list" id="stock-${pharmacy.id}">${entries().map(p=>miniProduct(p,pharmacy.missing.includes(p.id)?'Временно отсутствует':pharmacy.preorder.includes(p.id)?'Под заказ':'В наличии')).join('')}</div>`;}
 function availability(pharmacy,expandable=true){const {status,color}=stockInfo(pharmacy),canExpand=expandable&&color!=='green',open=ui.openRows.has(pharmacy.id);if(!canExpand)return `<p class="availability ${color}">${status}</p>`;return `<button type="button" class="availability ${color}" data-action="expand-row" data-id="${pharmacy.id}" aria-expanded="${open}" aria-controls="stock-${pharmacy.id}">${status}<span class="disclosure-icon" aria-hidden="true" style="--icon:url('images/${ASSETS[open?'chevron-up':'chevron']}')"></span></button>`;}
-function pharmacyRow(p){return `<article class="pharmacy-row" id="pharmacy-row-${p.id}"><div class="address-row"><div><button class="address" data-action="select-pharmacy" data-id="${p.id}">${p.address}</button><p class="pharmacy-meta">${p.hours}${p.distance?' · '+p.distance:''}</p></div><button class="bookmark ${ui.saved.has(p.id)?'saved':''}" data-action="bookmark" data-id="${p.id}" aria-label="${ui.saved.has(p.id)?'Убрать из избранного':'Добавить в избранное'}" aria-pressed="${ui.saved.has(p.id)}">${image(ui.saved.has(p.id)?'bookmark-filled':'bookmark')}</button></div>${availability(p)}${ui.openRows.has(p.id)?miniList(p):''}</article>`;}
+function pharmacyRow(p){return `<article class="pharmacy-row" id="pharmacy-row-${p.id}"><div class="address-row"><div><button class="address" data-action="select-pharmacy" data-id="${p.id}">${p.address}</button><p class="pharmacy-meta" title="Расстояние по прямой от Солнцедарской, 8">${p.hours}${p.distance?' · '+p.distance:''}</p></div><button class="bookmark ${ui.saved.has(p.id)?'saved':''}" data-action="bookmark" data-id="${p.id}" aria-label="${ui.saved.has(p.id)?'Убрать из избранного':'Добавить в избранное'}" aria-pressed="${ui.saved.has(p.id)}">${image(ui.saved.has(p.id)?'bookmark-filled':'bookmark')}</button></div>${availability(p)}${ui.openRows.has(p.id)?miniList(p):''}</article>`;}
 function normalize(s){return s.toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[^а-яa-z0-9]+/g,' ').trim();}
-function filteredPharmacies(){const tokens=normalize(ui.query).split(' ').filter(Boolean);return pharmacies.filter(p=>(!ui.favorites||ui.saved.has(p.id))&&tokens.every(t=>normalize(p.address).includes(t)));}
-function listHtml(){const list=filteredPharmacies();return list.length?list.map(pharmacyRow).join(''):`<div class="no-results"><h2>${ui.favorites&&!ui.query?'Нет избранных аптек':'Аптеки не найдены'}</h2><p style="margin-top:8px">${ui.favorites&&!ui.query?'Добавьте аптеку в избранное с помощью закладки':'Проверьте адрес или измените запрос'}</p>${ui.favorites?button('Показать все аптеки','all-pharmacies','secondary-button'):''}</div>`;}
-function map(){const p=pharmacies.find(p=>p.id===ui.selectedId)||pharmacies[0];app.innerHTML=`<section class="map-screen" aria-label="Выбор аптеки"><div id="live-map" class="live-map" aria-label="Интерактивная карта Геленджика"></div><div id="map-loading" class="map-loading" role="status">Загрузка карты…</div><a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a><button class="icon-button map-back" data-action="${ui.selected?'back-list':'cart'}" aria-label="Назад">${image('back')}</button><button class="icon-button map-location" data-action="locate" aria-label="Показать выбранную аптеку">${image('location')}</button><div class="map-controls"><button data-action="zoom-in" aria-label="Увеличить карту">${image('zoom-in')}</button><button data-action="zoom-out" aria-label="Уменьшить карту">${image('zoom-out')}</button></div><section class="sheet ${ui.selected?'selected':ui.collapsed?'collapsed':ui.expanded?'expanded':''}"><button class="handle" data-action="toggle-sheet" aria-label="${ui.collapsed?'Развернуть':'Изменить высоту'} список"><span></span></button>${ui.selected?`<div class="sheet-body"><div class="address-row"><div><h2>${p.address}</h2><p class="pharmacy-meta">${p.hours}${p.distance?' · '+p.distance:''}</p></div><button class="bookmark ${ui.saved.has(p.id)?'saved':''}" data-action="bookmark" data-id="${p.id}" aria-label="Добавить аптеку в избранное">${image(ui.saved.has(p.id)?'bookmark-filled':'bookmark')}</button></div>${availability(p,false)}${stockInfo(p).color!=='green'?miniList(p):''}</div>${button('Выбрать аптеку','choose-pharmacy','',p.id!=='sun'?'disabled':'')}`:`<div class="search-row"><button class="icon-button pale ${ui.favorites?'blue':''}" data-action="toggle-favorites" aria-label="Избранные аптеки" aria-pressed="${ui.favorites}">${image(ui.favorites?'bookmark-filled':'bookmark')}</button><label class="search-field">${image('search')}<input id="pharmacy-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Поиск по улице или адресу" aria-label="Поиск аптеки по улице или адресу" value="${esc(ui.query)}"></label></div><div class="sheet-body" id="pharmacy-results">${listHtml()}</div>`}</section></section>`;document.getElementById('phone').classList.add('map-active');applySheetHeight();mountLiveMap();}
+function filteredPharmacies(){const tokens=normalize(ui.query).split(' ').filter(Boolean);return pharmacies.filter(p=>(!ui.favorites||ui.saved.has(p.id))&&tokens.every(t=>normalize(p.address).includes(t))).sort((a,b)=>a.distanceMeters-b.distanceMeters||a.address.localeCompare(b.address,'ru'));}
+function listHtml(){const list=filteredPharmacies(),emptyFavorites=ui.favorites&&!ui.query;return list.length?list.map(pharmacyRow).join(''):`<div class="no-results ${emptyFavorites?'empty-favorites':''}"><div class="empty-copy"><h2>${emptyFavorites?'Нет избранных аптек':'Аптеки не найдены'}</h2><p>${emptyFavorites?'Сохраните аптеку с помощью закладки рядом с её адресом':'Проверьте адрес или измените запрос'}</p></div>${ui.favorites?button('Показать все аптеки','all-pharmacies','secondary-button'):''}</div>`;}
+function map(){const p=pharmacies.find(p=>p.id===ui.selectedId)||pharmacies[0];app.innerHTML=`<section class="map-screen" aria-label="Выбор аптеки"><div id="live-map" class="live-map" aria-label="Интерактивная карта Геленджика"></div><div id="map-loading" class="map-loading" role="status">Загрузка карты…</div><a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a><button class="icon-button map-back" data-action="${ui.selected?'back-list':'cart'}" aria-label="Назад">${image('back')}</button><button class="icon-button map-location" data-action="locate" aria-label="Показать моё местоположение">${image('location')}</button><div class="map-controls"><button data-action="zoom-in" aria-label="Увеличить карту">${image('zoom-in')}</button><button data-action="zoom-out" aria-label="Уменьшить карту">${image('zoom-out')}</button></div><section class="sheet ${ui.selected?'selected':ui.collapsed?'collapsed':ui.expanded?'expanded':''}"><button class="handle" data-action="toggle-sheet" aria-label="${ui.collapsed?'Развернуть':'Изменить высоту'} список"><span></span></button>${ui.selected?`<div class="sheet-body"><div class="address-row"><div><h2>${p.address}</h2><p class="pharmacy-meta" title="Расстояние по прямой от Солнцедарской, 8">${p.hours}${p.distance?' · '+p.distance:''}</p></div><button class="bookmark ${ui.saved.has(p.id)?'saved':''}" data-action="bookmark" data-id="${p.id}" aria-label="Добавить аптеку в избранное">${image(ui.saved.has(p.id)?'bookmark-filled':'bookmark')}</button></div>${availability(p,false)}${stockInfo(p).color!=='green'?miniList(p):''}</div>${button('Выбрать аптеку','choose-pharmacy','',p.id!=='sun'?'disabled':'')}`:`<div class="search-row"><button class="icon-button favorite-filter ${ui.favorites?'is-active':''}" data-action="toggle-favorites" aria-label="Избранные аптеки" aria-pressed="${ui.favorites}"><span class="favorite-filter-icon" aria-hidden="true"></span></button><label class="search-field">${image('search')}<input id="pharmacy-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Поиск по улице или адресу" aria-label="Поиск аптеки по улице или адресу" value="${esc(ui.query)}"></label></div><div class="sheet-body" id="pharmacy-results">${listHtml()}</div>`}</section></section>`;document.getElementById('phone').classList.add('map-active');applySheetHeight();mountLiveMap();}
 function checkoutProduct(p){return `<article class="checkout-product"><div class="mini-image">${image(p.id)}</div><div><p class="name">${esc(p.name)}</p><p class="amount">${money(p.price*p.qty)}</p></div><span class="quantity-small">×${p.qty}</span></article>`;}
 function orderGroups(){const active=entries(),stock=active.filter(p=>p.id!=='sinus'),preorder=active.filter(p=>p.id==='sinus');if(state.mode==='split')return[{title:`Заказ 1 · <span class="green">В наличии · ${count(stock)}</span>`,items:stock},{title:`Заказ 2 · <span class="orange">Под заказ · ${count(preorder)}</span>`,items:preorder}].filter(g=>g.items.length);if(state.mode==='stock')return[{title:`Товары · ${count(stock)}`,items:stock}];return[{title:`Товары · ${count(active)}`,items:active}];}
 function chosenProducts(){return state.mode==='stock'?entries().filter(p=>p.id!=='sinus'):entries();}
@@ -462,7 +486,7 @@ else if(a==='expand-sheet'){ui.expanded=true;ui.collapsed=false;render();}else i
 else if(a==='expand-row'){ui.openRows.has(id)?ui.openRows.delete(id):ui.openRows.add(id);const results=document.getElementById('pharmacy-results'),top=results.scrollTop;results.innerHTML=listHtml();results.scrollTop=top;ui.collapsed=false;ui.expanded=true;applySheetHeight();}
 else if(a==='bookmark'){ui.saved.has(id)?ui.saved.delete(id):ui.saved.add(id);render();}
 else if(a==='toggle-favorites'){ui.favorites=!ui.favorites;ui.expanded=true;ui.collapsed=false;render();}else if(a==='all-pharmacies'){ui.favorites=false;render();}
-else if(a==='locate'){if(ui.selected)focusPharmacyMarker();else if(liveMap)liveMap.setView([pharmacies[0].lat,pharmacies[0].lng],15);}
+else if(a==='locate'){if(liveMap)liveMap.setView([USER_LOCATION.lat,USER_LOCATION.lng],Math.max(15,liveMap.getZoom()));}
 else if(a==='zoom-in'||a==='zoom-out'){if(liveMap){a==='zoom-in'?liveMap.zoomIn():liveMap.zoomOut();}}
 else if(a==='mode'){state.mode=id;state.payment='pickup';render(true);}else if(a==='payment'){state.payment=id;render(true);}
 else if(a==='increase'||a==='decrease'){if(a==='decrease'&&state.quantities[id]===1){removeProduct(id);return;}state.quantities[id]=Math.max(1,state.quantities[id]+(a==='increase'?1:-1));render(true);}
