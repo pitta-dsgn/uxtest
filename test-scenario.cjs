@@ -24,11 +24,11 @@ click('reset');
 for(const id of ['para','sinus','thera']){click('remove',id);click('decrease',id);assert.equal(run(`state.quantities['${id}']`),1);assert(!run(`ui.removed['${id}']`));}
 for(const id of ['energy','flu','linaqua']){
  assert(run(`showRecommendation('${id}')`));click('add',id);assert(!run(`showRecommendation('${id}')`));assert.equal(run(`state.quantities['${id}']`),1);
- click('remove',id);assert(run(`showRecommendation('${id}')`));assert(!run(`entries().some(p=>p.id==='${id}')`));
+ click('remove',id);assert(!run(`showRecommendation('${id}')`));assert(!run(`entries().some(p=>p.id==='${id}')`));
  click('restore',id);assert(!run(`showRecommendation('${id}')`));assert(run(`entries().some(p=>p.id==='${id}')`));
 }
 click('clear');assert.equal(run('count(entries())'),3);assert.equal(run('entries().length'),3);assert(run('RECOMMENDED_PRODUCTS.every(showRecommendation)'));assert(run("showRecommendation('linaqua')"));
-click('add','energy');click('add','flu');assert(!elements.app.innerHTML.includes('<h2>Добавить к заказу</h2>'));click('remove','energy');assert(elements.app.innerHTML.includes('data-offer="energy"'));assert(!elements.app.innerHTML.includes('data-offer="flu"'));click('add','energy');assert(!run('ui.removed.energy'));assert.equal(run('state.quantities.energy'),1);click('clear');
+click('add','energy');click('add','flu');assert(!elements.app.innerHTML.includes('<h2>Добавить к заказу</h2>'));click('remove','energy');assert(!elements.app.innerHTML.includes('data-offer="energy"'));assert(!elements.app.innerHTML.includes('data-offer="flu"'));const deletionTimer=run('ui.removed.energy');deletionTimer._onTimeout();clearTimeout(deletionTimer);assert(elements.app.innerHTML.includes('data-offer="energy"'));assert(!elements.app.innerHTML.includes('data-product="energy"'));click('add','energy');assert(!run('ui.removed.energy'));assert.equal(run('state.quantities.energy'),1);click('clear');
 for(const timer of run('Object.values(ui.removed)'))clearTimeout(timer);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');const js=fs.readFileSync(__dirname+'/app.js','utf8');for(const name of Object.values(run('ASSETS')))assert(fs.existsSync(__dirname+'/images/'+name),name); assert(!js.includes('data:image/')); assert(!html.includes('data:image/')); assert(!html.includes('assets/'));
 console.log('PASS: main split order; one selectable pharmacy; arbitrary search; no results; stock-only; single order; promo error/correction; delete/restore; empty cart; local assets.');
@@ -134,3 +134,5 @@ assert.equal(run("USER_LOCATION.lat"),44.5583876);
 assert.equal(run("USER_LOCATION.lng"),38.0793139);
 const mapCSS=fs.readFileSync("styles.css","utf8");assert(/\.leaflet-marker-icon\.pharmacy-cluster\s*\{[^}]*position:absolute;[^}]*top:0;[^}]*left:0;/.test(mapCSS));
 console.log("PASS: Kirova 25 reference location and cluster CSS keeps Leaflet absolute positioning.");
+
+assert(run("pharmacyRow(pharmacies[0]).startsWith('<article class=\"pharmacy-row\" id=\"pharmacy-row-sun\" data-action=\"select-pharmacy\"')"));

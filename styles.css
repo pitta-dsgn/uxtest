@@ -185,3 +185,7 @@ body,button,input { letter-spacing:0; }
 .offer .button { align-self:flex-start; width:128px; min-height:40px; height:auto; margin-top:8px; padding:8px 12px; }
 .cart-item .icon-button:disabled,.counter button:disabled { opacity:.35; }
 .clear:disabled { opacity:.45; }
+
+/* Scenario items keep the regular delete icon appearance while remaining disabled. */
+.cart-item .icon-button[data-action="remove"]:disabled { opacity:1; }
+.pharmacy-row { cursor:pointer; }
