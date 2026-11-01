@@ -20,8 +20,15 @@ click('mode','split');assert(elements.app.innerHTML.includes('742 ₽'));assert(
 click('submit');assert.equal(run('state.orders.length'),2);assert.equal(run('state.orders[0].items.length'),2);assert.equal(run('state.orders[1].items[0].id'),'sinus');assert.equal(run('count(entries())'),0);assert(elements.app.innerHTML.includes('Оформлены 2 заказа'));
 click('reset');click('start-map');click('select-pharmacy');click('choose-pharmacy');click('mode','stock');assert.equal(run('sum(chosenProducts())'),742);assert.equal(run('chosenProducts().some(p=>p.rx)'),false);click('submit');assert.equal(run('state.orders.length'),1);assert.equal(run('state.quantities.sinus'),1);
 click('reset');click('start-map');click('select-pharmacy');click('choose-pharmacy');click('mode','together');click('promo');listeners.submit({target:{id:'promo-form',code:'APRIL20'},preventDefault(){}});assert(elements['overlay-root'].innerHTML.includes('Промокод не найден'));listeners.submit({target:{id:'promo-form',code:'APRIL200'},preventDefault(){}});assert.equal(run('state.promo'),true);assert(elements.app.innerHTML.includes('1 202 ₽'));click('submit');assert.equal(run('state.orders[0].discount'),200);
-click('reset');click('remove','para');assert.equal(run('count(entries())'),2);click('restore','para');assert.equal(run('count(entries())'),3);
-click('clear');assert(elements.app.innerHTML.includes('В корзине пока нет товаров'));
+click('reset');
+for(const id of ['para','sinus','thera']){click('remove',id);click('decrease',id);assert.equal(run(`state.quantities['${id}']`),1);assert(!run(`ui.removed['${id}']`));}
+for(const id of ['energy','flu','linaqua']){
+ assert(run(`showRecommendation('${id}')`));click('add',id);assert(!run(`showRecommendation('${id}')`));assert.equal(run(`state.quantities['${id}']`),1);
+ click('remove',id);assert(run(`showRecommendation('${id}')`));assert(!run(`entries().some(p=>p.id==='${id}')`));
+ click('restore',id);assert(!run(`showRecommendation('${id}')`));assert(run(`entries().some(p=>p.id==='${id}')`));
+}
+click('clear');assert.equal(run('count(entries())'),3);assert.equal(run('entries().length'),3);assert(run('RECOMMENDED_PRODUCTS.every(showRecommendation)'));assert(run("showRecommendation('linaqua')"));
+click('add','energy');click('add','flu');assert(!elements.app.innerHTML.includes('<h2>Добавить к заказу</h2>'));click('remove','energy');assert(elements.app.innerHTML.includes('data-offer="energy"'));assert(!elements.app.innerHTML.includes('data-offer="flu"'));click('add','energy');assert(!run('ui.removed.energy'));assert.equal(run('state.quantities.energy'),1);click('clear');
 for(const timer of run('Object.values(ui.removed)'))clearTimeout(timer);
 const html=fs.readFileSync(__dirname+'/index.html','utf8');const js=fs.readFileSync(__dirname+'/app.js','utf8');for(const name of Object.values(run('ASSETS')))assert(fs.existsSync(__dirname+'/images/'+name),name); assert(!js.includes('data:image/')); assert(!html.includes('data:image/')); assert(!html.includes('assets/'));
 console.log('PASS: main split order; one selectable pharmacy; arbitrary search; no results; stock-only; single order; promo error/correction; delete/restore; empty cart; local assets.');
