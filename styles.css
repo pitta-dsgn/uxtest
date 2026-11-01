@@ -130,3 +130,39 @@ body,button,input { letter-spacing:0; }
 .no-results .button { min-height:44px; }
 .user-location-marker { background:none; border:0; display:flex; align-items:center; justify-content:center; }
 .user-location-marker span { display:block; width:18px; height:18px; border-radius:50%; background:#2196f3; border:3px solid white; box-shadow:0 0 0 5px #2196f326,0 1px 5px #0003; }
+
+/* Checkout typography and pack geometry from Result, all three order modes. */
+.checkout-scroll { font-weight:400; font-size:14px; line-height:20px; }
+.checkout-scroll h2 { font-size:16px; line-height:24px; font-weight:600; }
+.checkout-scroll .link { font-size:14px; line-height:20px; font-weight:500; }
+.option-title { font-size:14px; line-height:20px; font-weight:500; }
+.option-description { font-size:14px; line-height:20px; font-weight:400; margin-top:4px; }
+.phone-number { margin-bottom:12px; font-weight:400; }
+.payment-row { gap:12px; font-size:14px; line-height:20px; font-weight:400; }
+.payment-row.selected { font-weight:500; }
+.payment-row.disabled { font-weight:400; }
+.checkout-scroll .total-row>span:last-child { font-weight:500; }
+.checkout-scroll .total-row.big { font-size:18px; line-height:24px; font-weight:600; }
+.total-row strong { font-weight:600; }
+.checkout-scroll .total-row.big strong { font-size:22px; line-height:28px; font-weight:600; }
+.checkout-scroll .total-row.big>span { font-weight:600; }
+.order-group-title { margin-bottom:12px; }
+.checkout-product { position:relative; display:grid; grid-template-columns:56px minmax(0,1fr); gap:12px; padding:0; border:0; }
+.checkout-product+.checkout-product { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+.checkout-product+.checkout-product>.quantity-small { top:12px; }
+.checkout-product .name { padding-right:36px; font-size:14px; line-height:20px; font-weight:400; }
+.checkout-product .amount { margin-top:4px; font-size:16px; line-height:24px; font-weight:600; }
+.checkout-product .quantity-small { position:absolute; right:0; top:0; width:28px; font-size:14px; line-height:20px; font-weight:500; text-align:right; }
+.checkout-product .product-stock { margin-top:4px; font-size:14px; line-height:20px; font-weight:500; }
+.checkout-product .mini-image { width:56px; height:64px; background:transparent; }
+.product-photo { object-fit:contain; flex:none; }
+.cart-item .product-image img.para { width:80px; height:48px; }
+.cart-item .product-image img.sinus { width:44.97px; height:76px; }
+.cart-item .product-image img.thera { width:76px; height:76px; }
+.mini-image img.para { width:56px; height:33.6px; }
+.mini-image img.sinus { width:37.87px; height:64px; }
+.mini-image img.thera { width:56px; height:56px; }
+.mini-image img.linaqua { width:47.16px; height:56px; }
+.related-row .product-image img.linaqua { width:64px; height:auto; }
+.offer .product-image img.energy { width:51.2px; height:64px; }
+.offer .product-image img.flu { width:65px; height:64px; }

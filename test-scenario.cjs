@@ -102,3 +102,17 @@ click('all-pharmacies');assert(!run('ui.favorites'));
 click('bookmark','sun');click('toggle-favorites');assert.equal(run('filteredPharmacies().length'),1);assert.equal(run('filteredPharmacies()[0].id'),'sun');
 click('locate');assert.equal(mapCalls.at(-1).map.center[0],point.lat);assert.equal(mapCalls.at(-1).map.center[1],point.lng);
 console.log('PASS: clusters anchored on pharmacy coordinates, fixed user-location pin, Haversine distances, nearest-first ordering, 8 preorder/1 unavailable, selected favorite filter and empty-state copy.');
+
+click('reset');click('start-map');click('select-pharmacy','sun');click('choose-pharmacy');
+assert(!elements.app.innerHTML.includes('Товары под заказ останутся в корзине'));
+click('mode','stock');assert(elements.app.innerHTML.includes('Товары под заказ останутся в корзине'));assert(!elements.app.innerHTML.includes('class="option-description">Заказ будет готов'));
+assert(elements.app.innerHTML.includes('Проверьте номер: на него придёт уведомление о готовности заказа'));
+click('mode','together');assert(elements.app.innerHTML.includes('Заказ будет готов к получению после поступления всех товаров в аптеку'));assert(!elements.app.innerHTML.includes('Товары под заказ останутся в корзине'));assert(elements.app.innerHTML.includes('product-stock orange'));
+click('mode','split');assert(elements.app.innerHTML.includes('Товары в наличии и под заказ будут оформлены отдельными заказами'));assert(!elements.app.innerHTML.includes('product-stock orange'));
+for(const id of ['para','sinus','thera','linaqua','energy','flu']){
+ const markup=run(`image('${id}')`);
+ assert(markup.includes('images/product_'));
+ assert(markup.includes('?v='+run(`PRODUCT_IMAGE_REVISIONS['${id}']`)));
+ assert(markup.includes('product-photo '+id));
+}
+console.log('PASS: exact Figma comments for all order modes, stock-only phone caption, preorder label only outside split mode, versioned images folder references for every product.');
