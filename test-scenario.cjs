@@ -116,3 +116,8 @@ for(const id of ['para','sinus','thera','linaqua','energy','flu']){
  assert(markup.includes('product-photo '+id));
 }
 console.log('PASS: exact Figma comments for all order modes, stock-only phone caption, preorder label only outside split mode, versioned images folder references for every product.');
+
+assert.equal(run("pharmacies.find(p=>p.id==='pharmacy_8').preorder.length"),0);
+assert.equal(run("pharmacies.find(p=>p.id==='pharmacy_8').missing.length"),0);
+for(const mode of [null,"stock","together","split"]){run(`state.mode=${JSON.stringify(mode)};checkout()`);assert(elements.app.innerHTML.includes("Проверьте номер: на него придёт уведомление о готовности заказа"));assert(!elements.app.innerHTML.includes("уведомление о заказе"));}
+console.log("PASS: Tourist pharmacy all in stock and identical phone caption in every checkout mode.");
