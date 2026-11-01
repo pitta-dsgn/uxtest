@@ -183,7 +183,8 @@ body,button,input { letter-spacing:0; }
 .offer .price-row { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:0; }
 .offer .price-hint { font-size:12px; line-height:16px; }
 .offer .button { align-self:flex-start; width:128px; min-height:40px; height:auto; margin-top:8px; padding:8px 12px; }
-.cart-item .icon-button:disabled,.counter button:disabled { opacity:.35; }
+.cart-item .icon-button:disabled { opacity:.35; }
+.counter button:disabled { opacity:1; }
 .clear:disabled { opacity:.45; }
 
 /* Scenario items keep the regular delete icon appearance while remaining disabled. */
