@@ -190,3 +190,6 @@ body,button,input { letter-spacing:0; }
 /* Scenario items keep the regular delete icon appearance while remaining disabled. */
 .cart-item .icon-button[data-action="remove"]:disabled { opacity:1; }
 .pharmacy-row { cursor:pointer; }
+
+.order-method { border-radius:12px; }
+.order-method.unselected { box-shadow:inset 0 0 0 1px var(--primary); }
