@@ -179,8 +179,8 @@ body,button,input { letter-spacing:0; }
 .offer { display:flex; flex-direction:row; align-items:flex-start; gap:12px; min-height:0; padding:0; background:transparent; border-radius:0; }
 .offer>.product-image { width:64px; height:88px; min-height:88px; flex:none; }
 .offer>.product-details { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
-.offer .product-name { font-size:14px; line-height:20px; }
-.offer .price-row { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+.offer .product-name { font-size:14px; line-height:20px; margin:0; }
+.offer .price-row { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:0; }
 .offer .price-hint { font-size:12px; line-height:16px; }
 .offer .button { align-self:flex-start; width:128px; min-height:40px; height:auto; margin-top:8px; padding:8px 12px; }
 .cart-item .icon-button:disabled,.counter button:disabled { opacity:.35; }
