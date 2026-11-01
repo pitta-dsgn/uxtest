@@ -323,7 +323,7 @@ for(const [index,pharmacy] of pharmacies.entries()){
  pharmacy.preorder=preorderIndexes.has(index)?(++preorderNumber%2?['sinus']:['para','thera']):[];
  pharmacy.missing=index===1?['sinus']:[];
 }
-const USER_LOCATION=Object.freeze({address:'г. Геленджик, ул. Солнцедарская, 8',lat:44.598501,lng:38.030582});
+const USER_LOCATION=Object.freeze({address:'г. Геленджик, ул. Кирова, 25',lat:44.5583876,lng:38.0793139});
 function distanceMeters(a,b){
  const radians=d=>d*Math.PI/180,lat=radians(b.lat-a.lat),lng=radians(b.lng-a.lng);
  const h=Math.sin(lat/2)**2+Math.cos(radians(a.lat))*Math.cos(radians(b.lat))*Math.sin(lng/2)**2;
@@ -390,7 +390,7 @@ async function mountLiveMap(){
   tiles.on('tileerror',()=>{if(mountId===mapMountId){loading.hidden=false;loading.textContent='Не удалось загрузить карту. Проверьте подключение к интернету';}});
   tiles.addTo(liveMap);
   markerLayer=L.layerGroup().addTo(liveMap);
-  L.marker([USER_LOCATION.lat,USER_LOCATION.lng],{icon:L.divIcon({className:'user-location-marker',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),title:'Вы здесь · Солнцедарская, 8',alt:'Ваше местоположение: Солнцедарская, 8',interactive:false,keyboard:false,zIndexOffset:1000}).addTo(liveMap);
+  L.marker([USER_LOCATION.lat,USER_LOCATION.lng],{icon:L.divIcon({className:'user-location-marker',html:'<span></span>',iconSize:[24,24],iconAnchor:[12,12]}),title:'Вы здесь · Кирова, 25',alt:'Ваше местоположение: Кирова, 25',interactive:false,keyboard:false,zIndexOffset:1000}).addTo(liveMap);
   refreshMapMarkers();
   liveMap.on('moveend zoomend',()=>{if(!liveMap)return;const c=liveMap.getCenter();mapView.center=[c.lat,c.lng];mapView.zoom=liveMap.getZoom();refreshMapMarkers();});
   if(focusSelectedMarker){focusSelectedMarker=false;focusPharmacyMarker();}

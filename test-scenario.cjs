@@ -93,7 +93,7 @@ assert.equal(run("pharmacies.find(p=>p.id==='sun').preorder.join(',')"),'sinus')
 assert(run("pharmacies.every(p=>p.distance&&Number.isFinite(p.distanceMeters))"));
 assert.equal(run("Math.round(distanceMeters(USER_LOCATION,USER_LOCATION))"),0);
 assert(run("filteredPharmacies().every((p,i,all)=>i===0||p.distanceMeters>=all[i-1].distanceMeters)"));
-assert(run("pharmacies[0].distanceMeters>200&&pharmacies[0].distanceMeters<500"));
+assert(run("pharmacies[0].distanceMeters>4000&&pharmacies[0].distanceMeters<7000"));
 const point=run('USER_LOCATION');
 assert(markers.some(m=>m.options.icon.className==='user-location-marker'&&m.center[0]===point.lat&&m.center[1]===point.lng));
 for(const m of markers){if(m.options.icon.className==='pharmacy-cluster')assert(run(`pharmacies.some(p=>p.lat===${m.center[0]}&&p.lng===${m.center[1]})`),'cluster center must be an actual pharmacy');}
@@ -121,3 +121,9 @@ assert.equal(run("pharmacies.find(p=>p.id==='pharmacy_8').preorder.length"),0);
 assert.equal(run("pharmacies.find(p=>p.id==='pharmacy_8').missing.length"),0);
 for(const mode of [null,"stock","together","split"]){run(`state.mode=${JSON.stringify(mode)};checkout()`);assert(elements.app.innerHTML.includes("Проверьте номер: на него придёт уведомление о готовности заказа"));assert(!elements.app.innerHTML.includes("уведомление о заказе"));}
 console.log("PASS: Tourist pharmacy all in stock and identical phone caption in every checkout mode.");
+
+assert.equal(run("USER_LOCATION.address"),"г. Геленджик, ул. Кирова, 25");
+assert.equal(run("USER_LOCATION.lat"),44.5583876);
+assert.equal(run("USER_LOCATION.lng"),38.0793139);
+const mapCSS=fs.readFileSync("styles.css","utf8");assert(/\.leaflet-marker-icon\.pharmacy-cluster\s*\{[^}]*position:absolute;[^}]*top:0;[^}]*left:0;/.test(mapCSS));
+console.log("PASS: Kirova 25 reference location and cluster CSS keeps Leaflet absolute positioning.");

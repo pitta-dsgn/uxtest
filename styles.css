@@ -82,7 +82,7 @@ body,button,input { letter-spacing:0; }
 .mini-image img { max-width:56px; max-height:64px; }
 .mini-name { overflow-wrap:break-word; }
 .pharmacy-marker { filter:none; }
-.pharmacy-cluster { border:0; background:none; box-shadow:none; position:relative; font:500 16px/24px Montserrat,Arial,sans-serif; }
+.pharmacy-cluster { border:0; background:none; box-shadow:none; position:absolute; font:500 16px/24px Montserrat,Arial,sans-serif; }
 .pharmacy-cluster>img { position:absolute; inset:0; width:48px; height:48px; max-width:none; }
 .pharmacy-cluster>span { position:relative; width:30px; height:28px; display:flex; align-items:center; justify-content:center; background:white; border-radius:50%; z-index:1; }
 .map-controls button { display:flex; align-items:center; justify-content:center; }
@@ -170,3 +170,6 @@ body,button,input { letter-spacing:0; }
 /* Use the native aspect ratios of the updated Website_Assets originals. */
 .offer .product-image img.energy { width:64px; height:64px; }
 .offer .product-image img.flu { width:65px; height:auto; }
+
+/* Leaflet positions marker icons from its pane origin; never put clusters in normal flow. */
+.leaflet-marker-icon.pharmacy-cluster { position:absolute; top:0; left:0; }
