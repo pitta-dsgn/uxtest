@@ -136,3 +136,6 @@ const mapCSS=fs.readFileSync("styles.css","utf8");assert(/\.leaflet-marker-icon\
 console.log("PASS: Kirova 25 reference location and cluster CSS keeps Leaflet absolute positioning.");
 
 assert(run("pharmacyRow(pharmacies[0]).startsWith('<article class=\"pharmacy-row\" id=\"pharmacy-row-sun\" data-action=\"select-pharmacy\"')"));
+
+for(const [expanded,collapsed] of [[false,false],[true,false],[false,true]]){run(`ui.expanded=${expanded};ui.collapsed=${collapsed};`);click("toggle-favorites");assert.equal(run("ui.expanded"),expanded);assert.equal(run("ui.collapsed"),collapsed);click("toggle-favorites");assert.equal(run("ui.expanded"),expanded);assert.equal(run("ui.collapsed"),collapsed);}
+console.log("PASS: favorite filtering preserves all three sheet states when toggled on or off.");

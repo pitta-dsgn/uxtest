@@ -490,7 +490,7 @@ else if(a==='choose-pharmacy'){if(ui.selectedId!=='sun')return;state.chosen=true
 else if(a==='expand-sheet'){ui.expanded=true;ui.collapsed=false;render();}else if(a==='toggle-sheet'){if(ui.selected){ui.selected=false;ui.expanded=true;ui.collapsed=false;}else if(ui.collapsed){ui.collapsed=false;ui.expanded=false;}else if(ui.expanded){ui.expanded=false;ui.collapsed=true;}else{ui.expanded=true;}render();}
 else if(a==='expand-row'){ui.openRows.has(id)?ui.openRows.delete(id):ui.openRows.add(id);const results=document.getElementById('pharmacy-results'),top=results.scrollTop;results.innerHTML=listHtml();results.scrollTop=top;ui.collapsed=false;ui.expanded=true;applySheetHeight();}
 else if(a==='bookmark'){ui.saved.has(id)?ui.saved.delete(id):ui.saved.add(id);render();}
-else if(a==='toggle-favorites'){ui.favorites=!ui.favorites;ui.expanded=true;ui.collapsed=false;render();}else if(a==='all-pharmacies'){ui.favorites=false;render();}
+else if(a==='toggle-favorites'){ui.favorites=!ui.favorites;render();}else if(a==='all-pharmacies'){ui.favorites=false;render();}
 else if(a==='locate'){if(liveMap)liveMap.setView([USER_LOCATION.lat,USER_LOCATION.lng],Math.max(15,liveMap.getZoom()));}
 else if(a==='zoom-in'||a==='zoom-out'){if(liveMap){a==='zoom-in'?liveMap.zoomIn():liveMap.zoomOut();}}
 else if(a==='mode'){state.mode=id;state.payment='pickup';render(true);}else if(a==='payment'){state.payment=id;render(true);}
